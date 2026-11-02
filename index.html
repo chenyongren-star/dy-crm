@@ -1111,32 +1111,52 @@ var METRICS = {
   arr: {name:'到诊',   get:function(s){return s.arr;},  fmt:function(s){return s.arr.toLocaleString();}},
   cvrt:{name:'总转化', get:function(s){return s.cvrt;}, fmt:function(s){return fmtCvrt(s);}},
 };
-function openDetail(scope, metric, label){
-  var ld=latestDate(), month=ld.slice(0,7);
-  var list = records.filter(function(r){ return scope==='day'? r.date===ld : r.date.slice(0,7)===month; });
-  var rows = ORGS.map(function(org){
-    var s=sum(list.filter(function(r){return r.org===org;}));
-    return {org:org, s:s};
-  });
-  var m=METRICS[metric];
-  rows.sort(function(a,b){return m.get(b.s)-m.get(a.s);});
-  var T=sum(list);
-
-  document.getElementById('modalTitle').textContent =
-    (scope==='day'? ld+' · 日' : month+' · 月') + m.name + ' — 各渠道明细';
-
+/* 各渠道明细表（全字段：有效 / 本点 / 推出 / 未转潜 / 各率）
+   弹窗与「年度数据」页共用同一套渲染，避免两处实现漂移。
+   list = 记录集合（某天或某月）；metric = 需高亮的指标分组，null 则不高亮 */
+function orgDetailHTML(list, metric){
+  var T = sum(list);
   // 本点/推出拆分口径自 2026-10 启用，更早月份无细分数据
   var hasSplit = (T.push_local||0)+(T.push_none||0)+(T.book_local||0)+(T.book_push||0) > 0;
-  var fmtRate=function(num,den){ return den>0 ? fmtPct(num/den*100) : '—'; };
+  var rate = function(num,den){ return den>0 ? fmtPct(num/den*100) : '—'; };
+  var dN   = function(n){ return hasSplit ? n.toLocaleString() : '—'; };
+  var dR   = function(num,den){ return hasSplit ? rate(num,den) : '—'; };
   // 点击哪个指标卡，就高亮对应列（转潜/预约两条链同时高亮）
   var HL={val:['val'],push:['pl','pp'],book:['bl','bp'],arr:['arr'],cvrt:['cvrt']};
-  var cell=function(key,html,rate){
-    return '<td class="'+((HL[metric]||[]).indexOf(key)>=0?'hl ':'')+(rate?'rate':'')+'">'+html+'</td>';
+  var cell=function(key,html,isRate){
+    return '<td class="'+((HL[metric]||[]).indexOf(key)>=0?'hl ':'')+(isRate?'rate':'')+'">'+html+'</td>';
   };
-  var fmtN=function(n){ return hasSplit ? n.toLocaleString() : '—'; };
-  var fmtR=function(num,den){ return hasSplit ? fmtRate(num,den) : '—'; };
+  var rows = ORGS.map(function(org){
+    return {org:org, s:sum(list.filter(function(r){return r.org===org;}))};
+  });
+  var m = METRICS[metric] || METRICS.val;
+  rows.sort(function(a,b){ return m.get(b.s)-m.get(a.s); });
 
-  var h='<div style="font-size:12px;color:var(--txt2);margin:2px 0 8px;line-height:1.7">'
+  var line = function(name, s){
+    return '<tr><td style="text-align:left">'+name+'</td>'
+      +cell('val', s.val.toLocaleString())
+      // 本点链
+      +cell('pl', dN(s.push_local))
+      +cell('bl', dN(s.book_local))
+      +cell('blr', dR(s.book_local,s.push_local), true)
+      +cell('al', dN(s.arr_local))
+      +cell('alr', dR(s.arr_local,s.book_local), true)
+      +cell('lcv', dR(s.arr_local,s.push_local), true)
+      // 推出链
+      +cell('pp', dN(s.push))
+      +cell('bp', dN(s.book_push))
+      +cell('bpr', dR(s.book_push,s.push), true)
+      +cell('ap', dN(s.arr_push))
+      +cell('apr', dR(s.arr_push,s.book_push), true)
+      +cell('pcv', dR(s.arr_push,s.push), true)
+      // 汇总
+      +cell('pn', dN(s.push_none))
+      +cell('arr', s.arr.toLocaleString())
+      +cell('cvrt', fmtCvrt(s), true)
+      +'</tr>';
+  };
+
+  return '<div style="font-size:12px;color:var(--txt2);margin:2px 0 8px;line-height:1.7">'
     +'本点 = 先聊与转潜同中心　·　推出 = 跨中心转潜　·　预约率 = 预约÷转潜　·　到诊率 = 到诊÷预约　·　转化 = 到诊÷转潜（本点/推出各走各链）　·　总转化 = 总到诊÷有效'
     +(hasSplit?'':'<br><b style="color:var(--red)">该月早于拆分口径启用（2026-10 起），本点/推出/未转潜列以「—」显示。</b>')
     +'</div>'
@@ -1149,49 +1169,31 @@ function openDetail(scope, metric, label){
     +'<th>转潜</th><th>预约</th><th class="rate-h">预约率</th><th>到诊</th><th class="rate-h">到诊率</th><th class="rate-h">转化</th>'
     +'<th>转潜</th><th>预约</th><th class="rate-h">预约率</th><th>到诊</th><th class="rate-h">到诊率</th><th class="rate-h">转化</th>'
     +'<th>未转潜</th><th>到诊</th><th class="rate-h">总转化</th>'
-    +'</tr></thead><tbody>';
-  rows.forEach(function(r){
-    var s=r.s;
-    h+='<tr><td style="text-align:left">'+r.org+'</td>'
-      +cell('val', s.val.toLocaleString())
-      // 本点链
-      +cell('pl', fmtN(s.push_local))
-      +cell('bl', fmtN(s.book_local))
-      +cell('blr', fmtR(s.book_local,s.push_local), true)
-      +cell('al', fmtN(s.arr_local))
-      +cell('alr', fmtR(s.arr_local,s.book_local), true)
-      +cell('lcv', fmtR(s.arr_local,s.push_local), true)
-      // 推出链
-      +cell('pp', fmtN(s.push))
-      +cell('bp', fmtN(s.book_push))
-      +cell('bpr', fmtR(s.book_push,s.push), true)
-      +cell('ap', fmtN(s.arr_push))
-      +cell('apr', fmtR(s.arr_push,s.book_push), true)
-      +cell('pcv', fmtR(s.arr_push,s.push), true)
-      // 汇总
-      +cell('pn', fmtN(s.push_none))
-      +cell('arr', s.arr.toLocaleString())
-      +cell('cvrt', fmtCvrt(s), true)
-      +'</tr>';
-  });
-  h+='</tbody><tfoot><tr><td style="text-align:left">合计</td>'
-    +cell('val', T.val.toLocaleString())
-    +cell('pl', fmtN(T.push_local))
-    +cell('bl', fmtN(T.book_local))
-    +cell('blr', fmtR(T.book_local,T.push_local), true)
-    +cell('al', fmtN(T.arr_local))
-    +cell('alr', fmtR(T.arr_local,T.book_local), true)
-    +cell('lcv', fmtR(T.arr_local,T.push_local), true)
-    +cell('pp', fmtN(T.push))
-    +cell('bp', fmtN(T.book_push))
-    +cell('bpr', fmtR(T.book_push,T.push), true)
-    +cell('ap', fmtN(T.arr_push))
-    +cell('apr', fmtR(T.arr_push,T.book_push), true)
-    +cell('pcv', fmtR(T.arr_push,T.push), true)
-    +cell('pn', fmtN(T.push_none))
-    +cell('arr', T.arr.toLocaleString())
-    +cell('cvrt', fmtCvrt(T), true)
-    +'</tr></tfoot></table></div>';
+    +'</tr></thead><tbody>'
+    + rows.map(function(r){ return line(r.org, r.s); }).join('')
+    +'</tbody><tfoot>'+line('合计', T)+'</tfoot></table></div>';
+}
+
+/* 弹窗底部「查看历史月份」跳转：切到年度数据页并定位到渠道明细板块 */
+function gotoYearDetail(m){
+  closeModal();
+  yrMonth = m || '';
+  cur='year'; route();
+  setTimeout(function(){
+    var el=document.getElementById('orgDetailBlock');
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 60);
+}
+
+function openDetail(scope, metric, label){
+  var ld=latestDate(), month=ld.slice(0,7);
+  var list = records.filter(function(r){ return scope==='day'? r.date===ld : r.date.slice(0,7)===month; });
+  var m=METRICS[metric];
+  document.getElementById('modalTitle').textContent =
+    (scope==='day'? ld+' · 日' : month+' · 月') + m.name + ' — 各渠道明细';
+  var h = orgDetailHTML(list, metric)
+    + '<div style="text-align:right;margin:10px 2px 2px">'
+    + '<a href="javascript:;" onclick="gotoYearDetail(\''+month+'\')" style="color:var(--blue);font-size:12.5px;text-decoration:none">查看历史月份 →</a></div>';
   document.getElementById('modalBody').innerHTML=h;
   document.getElementById('mask').classList.add('show');
   document.querySelector('#mask .modal').classList.add('wide');
@@ -1615,20 +1617,17 @@ function renderYear(){
   var Y=sum(ylist);
   h+='</tbody><tfoot>'+row(year+' 全年合计', Y)+'</tfoot></table></div></div>';
 
-  /* ② 月份选项卡 + 当月各渠道明细 */
+  /* ② 月份选项卡 + 当月各渠道明细（全字段：有效 / 本点 / 推出 / 未转潜 / 各率）
+     与仪表盘弹窗共用 orgDetailHTML，改一处两边同时生效 */
   var mbtn=function(m){
     return '<button class="btn'+(yrMonth===m?' primary':'')+'" onclick="setYrMonth(\''+m+'\')">'+ (+m.slice(5,7)) +'月</button>';
   };
   var monList=ylist.filter(function(r){return r.date.slice(0,7)===yrMonth;});
-  h+='<div class="sec-title"><span class="dot blue"></span>'+yrMonth+' 各渠道明细 <span class="meta">点击月份切换</span></div>'
+  h+='<div id="orgDetailBlock">'
+    +'<div class="sec-title"><span class="dot blue"></span>'+yrMonth+' 各渠道明细 <span class="meta">含本点/推出拆分 · 点击月份切换</span></div>'
     +'<div class="toolbar" style="margin-top:0">'+months.map(function(m){return mbtn(m);}).join('')+'</div>'
-    +'<div class="panel"><div class="table-wrap"><table><thead><tr><th>渠道</th>'+head+'</tr></thead><tbody>';
-  ORGS.forEach(function(org){
-    var s=sum(monList.filter(function(r){return r.org===org;}));
-    h+=row(org, s);
-  });
-  var M=sum(monList);
-  h+='</tbody><tfoot>'+row(yrMonth+' 合计', M)+'</tfoot></table></div></div>';
+    +'<div class="panel" style="padding:12px 10px">'+orgDetailHTML(monList, null)+'</div>'
+    +'</div>';
 
   /* ③ 全年各渠道汇总 */
   h+='<div class="sec-title"><span class="dot"></span>'+year+' 全年各渠道汇总 <span class="meta">按到诊排序</span></div>'
