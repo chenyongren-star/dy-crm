@@ -1,7 +1,7 @@
 {
-  "name": "DY-CRM系统 · 医疗营销数据驾驶舱",
-  "short_name": "DY-CRM",
-  "description": "医疗营销数据驾驶舱，离线可用，支持添加至主屏幕",
+  "name": "DY 日报",
+  "short_name": "DY 日报",
+  "description": "医疗营销转化数据日报，每日更新，离线可用",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
