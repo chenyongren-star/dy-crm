@@ -1,4 +1,4 @@
-const CACHE = 'dy-crm-v6';
+const CACHE = 'dy-crm-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,9 @@ const ASSETS = [
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CACHE).then(function (c) {
-      return c.addAll(ASSETS);
+      return Promise.all(ASSETS.map(function (u) {
+        return c.add(new Request(u, { cache: 'reload' }));
+      }));
     }).then(function () {
       return self.skipWaiting();
     })
@@ -54,6 +56,22 @@ self.addEventListener('fetch', function (e) {
 
   // data.js（数据文件）：**网络优先 + 绕过一切缓存**，永远拉最新数据；离线才降级缓存
   if (req.url.indexOf('data.js') !== -1) {
+    e.respondWith(
+      fetch(req, { cache: 'no-store' }).then(function (resp) {
+        if (resp && resp.status === 200) {
+          var copy = resp.clone();
+          caches.open(CACHE).then(function (c) { c.put(req, copy); });
+        }
+        return resp;
+      }).catch(function () {
+        return caches.match(req);
+      })
+    );
+    return;
+  }
+
+  // manifest（应用名/图标配置）：网络优先，改名字后能立刻生效，不用再改缓存版本号
+  if (req.url.indexOf('manifest') !== -1) {
     e.respondWith(
       fetch(req, { cache: 'no-store' }).then(function (resp) {
         if (resp && resp.status === 200) {
