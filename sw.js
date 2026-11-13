@@ -1,5 +1,5 @@
-const CACHE='dy-crm-v9';
-const STATIC=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='dy-crm-v10';
+const STATIC=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./dy-mark.svg','./favicon-32.png','./apple-touch-icon.png','./share-cover-dy.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('dy-crm-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
@@ -14,5 +14,6 @@ self.addEventListener('fetch',event=>{
       return response;
     }).catch(()=>caches.match(key)));return;
   }
-  if(STATIC.some(name=>new URL(name,self.location.href).pathname===url.pathname))event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request)));
+  const asset=STATIC.find(name=>new URL(name,self.location.href).pathname===url.pathname);
+  if(asset)event.respondWith(caches.match(asset).then(cached=>cached||fetch(event.request)));
 });
