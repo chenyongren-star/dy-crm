@@ -1,15 +1,25 @@
 {
   "name": "DY 日报",
   "short_name": "DY 日报",
-  "description": "医疗营销转化数据日报，每日更新，离线可用",
+  "description": "个人经营数据工作台，每日汇总，离线查看",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#101c2e",
-  "theme_color": "#1d6fe0",
+  "background_color": "#f4f4ef",
+  "theme_color": "#203c36",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
