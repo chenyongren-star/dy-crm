@@ -191,7 +191,7 @@ function funnelTable(rows,key,names,{interactive=true,focus=metric}={}){
 }
 function observation(s,base){
  if(s.val<5)return{state:'small',text:'样本不足',detail:'有效少于5条，暂不判断差距'};
- const candidates=[['push','val','推出/有效'],['book_push','push','推出预约/转潜'],['arr','val','到诊/有效']];
+ const candidates=[['push','val','推出/有效'],['book_push','push','推出预约/转潜'],['arr','val','总转化']];
  let eligible=0,worst=null;
  candidates.forEach(([n,d,label])=>{
   if(!known(s,n)||!known(s,d)||!known(base,n)||!known(base,d)||s[d]<5||base[d]<5||!base[n])return;
@@ -204,7 +204,7 @@ function summaryTable(rows,f,isStaff){
  const key=isStaff?'staff':'org',names=isStaff?(f.staff?[f.staff]:STAFF):(f.org?[f.org]:ORGS),items=analysisGroups(rows,key,names),total=analysisSum(rows);
  const baseRows=scopedRows({...f,...(isStaff?{staff:''}:{org:''})}),base=analysisSum(baseRows);
  function cells(r,isTotal=false){const o=observation(r,base);return '<td>'+fmt(r.val)+'</td><td>'+fmt(r.push)+'</td><td class="ratio-cell">'+rate(r.push,r.val)+'</td><td>'+fmt(r.book)+'</td><td class="ratio-cell" title="沿用旧版：预约合计÷推出转潜；本点预约也包含在分子中，请结合下方分链表阅读">'+rate(r.book,r.push)+'</td><td class="primary-cell">'+fmt(r.arr)+'</td><td class="ratio-cell">'+rate(r.arr,r.book)+'</td><td class="ratio-cell">'+rate(r.arr,r.val)+'</td><td>'+(total.arr?rate(r.arr,total.arr):'—')+'</td><td>'+(isTotal?'—':'<span class="observation '+o.state+'" title="'+esc(o.detail)+'">'+esc(o.text)+'</span>')+'</td>'}
- const h='<table class="analysis-table summary-table" data-analysis="performance"><thead><tr>'+['对象','有效','推出转潜','推出/有效','预约合计','预约/推出¹','到诊合计','到诊/预约','到诊/有效','到诊占比','待观察环节'].map(x=>'<th scope="col">'+x+'</th>').join('')+'</tr></thead><tbody>'+items.map(r=>'<tr><th scope="row">'+nameButton(r.name,isStaff?'staff':'channel')+'</th>'+cells(r)+'</tr>').join('')+'</tbody><tfoot><tr><th scope="row">合计</th>'+cells(total,true)+'</tr></tfoot></table>';
+ const h='<table class="analysis-table summary-table" data-analysis="performance"><thead><tr>'+['对象','有效','推出转潜','推出/有效','预约合计','预约/推出¹','到诊合计','到诊/预约','总转化','到诊占比','待观察环节'].map(x=>'<th scope="col">'+x+'</th>').join('')+'</tr></thead><tbody>'+items.map(r=>'<tr><th scope="row">'+nameButton(r.name,isStaff?'staff':'channel')+'</th>'+cells(r)+'</tr>').join('')+'</tbody><tfoot><tr><th scope="row">合计</th>'+cells(total,true)+'</tr></tfoot></table>';
  return scrollTable(h,'完整绩效与期间比率')+'<p class="analysis-formulas">¹ 沿用旧版预约合计÷推出转潜，包含本点预约；分析具体链路请看下方分链表。到诊占比＝个人或渠道到诊÷当前范围到诊。待观察基准：同期、同'+(isStaff?'渠道的全部客服':'客服的全部渠道')+'。</p><p class="table-caption">'+ANALYSIS_NOTE+'</p>';
 }
 function analysisInsights(rows,f,isStaff){
