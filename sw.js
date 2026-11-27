@@ -1,4 +1,4 @@
-const CACHE='dy-crm-v11-analysis';
+const CACHE='dy-crm-v12-profit-summary';
 const STATIC=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./dy-mark.svg','./favicon-32.png','./apple-touch-icon.png','./share-cover-dy.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('dy-crm-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
